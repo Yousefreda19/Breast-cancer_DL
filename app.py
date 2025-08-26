@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision.models as models
 import torch.nn as nn
@@ -11,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.resnet18(weights=None)  # مش عايزين pretrained هنا لو أنت حافظت weights
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, 3)      # عدد الكلاسات = 2
-model.load_state_dict(torch.load("resnet_weights1.pth", map_location=device))
+model.load_state_dict(torch.load("resnet_weights_final.pth", map_location=device))
 model = model.to(device)
 model.eval()
 
@@ -37,9 +38,11 @@ if uploaded_file is not None:
     img = transform(image).unsqueeze(0).to(device)
    
     with torch.no_grad():
-      outputs = model(img)
-      _, preds = torch.max(outputs, 1)
+     outputs = model(img)              # raw scores (logits)
+     probs = F.softmax(outputs, dim=1) # نحول لاحتمالات
+     conf, preds = torch.max(probs, 1)
 
     classes = ['benign', 'malignant', 'normal']
     st.write(f"Prediction : {classes[preds.item()]}")
+    st.write(f"Probability: {conf.item():.4f}")
 #http://localhost:8501/
